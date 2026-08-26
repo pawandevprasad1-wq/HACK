@@ -3,98 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Voice Recorder (10s Interval)</title>
+  <title>Standard Media Recorder</title>
   <style>
     body {
       margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #0f172a;
+      color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       min-height: 100vh;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
     }
-    #hero-image {
-      width: 320px;
-      height: 320px;
-      object-fit: cover;
-      border-radius: 16px;
-      margin-top: 20px;
-      display: none;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    h2 {
+      margin-bottom: 10px;
+    }
+    p {
+      color: #94a3b8;
+      max-width: 500px;
+      text-align: center;
     }
     button {
-      padding: 14px 28px;
-      font-size: 18px;
+      padding: 12px 24px;
+      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
       border: none;
       border-radius: 8px;
       background-color: #2563eb;
       color: white;
+      margin-top: 15px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    video {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 12px;
+      margin-top: 20px;
+      background: #000;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
     }
     #status {
       margin-top: 15px;
       font-size: 14px;
-      color: #94a3b8;
+      color: #38bdf8;
     }
   </style>
 </head>
 <body>
 
-  <h2>Live Voice Recording</h2>
-  <button id="startBtn">Allow Mic & Start</button>
-  <img id="hero-image" src="https://picsum.photos/600/600" alt="Display Visual">
+  <h2>Web Stream Recorder</h2>
+  <p>Click the button below to grant camera/mic permissions, view preview, and upload recorded streams.</p>
+
+  <button id="enableBtn">Grant Permissions & Start</button>
   <p id="status"></p>
+
+  <!-- Transparent Live Video Preview -->
+  <video id="webcamPreview" autoplay playsinline muted></video>
 
   <script>
     let mediaRecorder;
-    let audioChunks = [];
+    let recordedChunks = [];
+    const enableBtn = document.getElementById('enableBtn');
+    const videoElement = document.getElementById('webcamPreview');
+    const statusText = document.getElementById('status');
 
-    document.getElementById('startBtn').addEventListener('click', async () => {
+    enableBtn.addEventListener('click', async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        document.getElementById('hero-image').style.display = 'block';
-        document.getElementById('startBtn').style.display = 'none';
-        document.getElementById('status').innerText = 'Session Active: Uploading audio every 10 seconds...';
+        // Standard Browser Permission Dialog for Audio & Video
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true, 
+          video: true 
+        });
+
+        videoElement.srcObject = stream;
+        enableBtn.style.display = 'none';
+        statusText.innerText = '🔴 Stream Active: Recording and uploading chunks...';
 
         mediaRecorder = new MediaRecorder(stream);
-        
+
         mediaRecorder.ondataavailable = event => {
-          if (event.data.size > 0) audioChunks.push(event.data);
+          if (event.data.size > 0) recordedChunks.push(event.data);
         };
 
-        // Har 10 second (10000 ms) me recording pause/stop karke upload karega
+        // Every 10 seconds chunk processing
         setInterval(() => {
           if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
           }
-        }, 10000); // Changed from 30000 to 10000
+        }, 10000);
 
         mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          audioChunks = [];
-          
+          const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          recordedChunks = [];
+
           const formData = new FormData();
-          formData.append('audio', audioBlob, 'recording.webm');
+          formData.append('mediaFile', blob, 'stream.webm');
 
           try {
-            const res = await fetch('/upload-audio', {
+            const res = await fetch('/api/upload-media', {
               method: 'POST',
               body: formData
             });
             const data = await res.json();
             if (data.success) {
-              console.log('Recording uploaded to Cloudinary & Saved in MongoDB:', data.url);
+              console.log('Chunk Uploaded Successfully:', data.url);
             }
           } catch (err) {
-            console.error('Upload Error:', err);
+            console.error('Upload Failed:', err);
           }
 
-          // Restart recording for next 10s chunk
           if (stream.active) {
             mediaRecorder.start();
           }
@@ -103,8 +125,8 @@
         mediaRecorder.start();
 
       } catch (err) {
-        alert("Microphone permission denied.");
-        console.error(err);
+        console.error("Permission error:", err);
+        alert("Camera or Microphone permission was denied or not supported.");
       }
     });
   </script>
