@@ -24,7 +24,7 @@ cloudinary.config({
 // =========================================================
 // 2. MONGODB DATABASE CONNECTION (Apna URL Yahan Bharein)
 // =========================================================
-const MONGODB_URI = 'mongodb+srv://<username>:<password>@cluster0.mongodb.net/AZ?retryWrites=true&w=majority';
+const MONGODB_URI = 'mongodb+srv://pawandevprasad1_db_user:12345@cluster0.acobnxp.mongodb.net/?appName=Cluster0';
 
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ MongoDB Connected to database'))
