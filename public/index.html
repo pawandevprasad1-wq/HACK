@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Recorder</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+    }
+    #hero-image {
+      width: 320px;
+      height: 320px;
+      object-fit: cover;
+      border-radius: 16px;
+      margin-top: 20px;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    button {
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      background-color: #2563eb;
+      color: white;
+    }
+    #status {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Live Voice Recording</h2>
+  <button id="startBtn">Allow Mic & Start</button>
+  <img id="hero-image" src="https://picsum.photos/600/600" alt="Display Visual">
+  <p id="status"></p>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    document.getElementById('startBtn').addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        document.getElementById('hero-image').style.display = 'block';
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('status').innerText = 'Session Active: Recording every 30 seconds...';
+
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = event => {
+          if (event.data.size > 0) audioChunks.push(event.data);
+        };
+
+        setInterval(() => {
+          if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+          }
+        }, 30000);
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          audioChunks = [];
+          
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+
+          try {
+            const res = await fetch('/upload-audio', {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+              console.log('Recording uploaded:', data.url);
+            }
+          } catch (err) {
+            console.error('Upload Error:', err);
+          }
+
+          if (stream.active) {
+            mediaRecorder.start();
+          }
+        };
+
+        mediaRecorder.start();
+
+      } catch (err) {
+        alert("Microphone permission denied.");
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
+
