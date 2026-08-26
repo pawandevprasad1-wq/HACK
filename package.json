@@ -1,14 +1,17 @@
 {
-  "name": "render-voice-recorder",
+  "name": "camera-audio-stream-demo",
   "version": "1.0.0",
+  "description": "Standard Web Media Recorder and Cloud Sync App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "cloudinary": "^1.41.0",
-    "express": "^4.18.2",
-    "mongoose": "^8.0.0",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.3.1",
     "multer": "^1.4.5-lts.1"
   }
 }
+
